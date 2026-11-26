@@ -12,6 +12,7 @@ import customerRoutes from './routes/customer.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
 
 const app = express();
 
@@ -66,6 +67,8 @@ app.use('/api/invoices', requireAuth, requireBusiness);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/payments', requireAuth, requireBusiness);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/dashboard', requireAuth, requireBusiness);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/api/me', requireAuth, async (req, res) => {
   try {
