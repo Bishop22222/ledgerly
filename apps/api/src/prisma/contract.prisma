@@ -1,0 +1,242 @@
+
+// use prisma-8
+
+enum BusinessRole {
+  OWNER
+  ADMIN
+  STAFF
+}
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  ADJUSTMENT
+  RETURN
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  PARTIALLY_PAID
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  MOBILE_MONEY
+  OTHER
+}
+
+model User {
+  id           Uuid             @id @onCreate(uuid())
+  email        String           @unique
+  passwordHash String
+  fullName     String
+  createdAt    DateTime         @default(now())
+  updatedAt    temporal.UpdatedAt
+  memberships  BusinessMember[]
+}
+
+model Business {
+  id          Uuid             @id @onCreate(uuid())
+  name        String
+  currencyCode String          @default("USD")
+  timezone    String           @default("Africa/Nairobi")
+  createdAt   DateTime         @default(now())
+  updatedAt   temporal.UpdatedAt
+
+  memberships BusinessMember[]
+  categories  Category[]
+  products    Product[]
+  movements   StockMovement[]
+  customers   Customer[]
+  sales       Sale[]
+  invoices    Invoice[]
+  payments    Payment[]
+}
+
+model BusinessMember {
+  id         Uuid        @id @onCreate(uuid())
+  businessId Uuid
+  userId     Uuid
+  role       BusinessRole @default(STAFF)
+  createdAt  DateTime    @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([businessId, userId])
+  @@index([userId])
+}
+
+model Category {
+  id         Uuid   @id @onCreate(uuid())
+  businessId Uuid
+  name       String
+  createdAt  DateTime @default(now())
+
+  business Business  @relation(fields: [businessId], references: [id])
+  products Product[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+}
+
+model Product {
+  id            Uuid    @id @onCreate(uuid())
+  businessId    Uuid
+  categoryId    Uuid?
+  name          String
+  sku           String?
+  description   String?
+  costPrice     Decimal(precision: 12, scale: 2)
+  sellingPrice  Decimal(precision: 12, scale: 2)
+  stockQuantity Decimal(precision: 12, scale: 3) @default(0)
+  reorderLevel  Decimal(precision: 12, scale: 3) @default(0)
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     temporal.UpdatedAt
+
+  business  Business  @relation(fields: [businessId], references: [id])
+  category  Category? @relation(fields: [categoryId], references: [id])
+  movements StockMovement[]
+  saleItems SaleItem[]
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([categoryId])
+}
+
+model StockMovement {
+  id         Uuid              @id @onCreate(uuid())
+  businessId Uuid
+  productId  Uuid
+  type       StockMovementType
+  quantity   Decimal(precision: 12, scale: 3)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([businessId, createdAt])
+  @@index([productId, createdAt])
+}
+
+model Customer {
+  id         Uuid   @id @onCreate(uuid())
+  businessId Uuid
+  name       String
+  email      String?
+  phone      String?
+  address    String?
+  createdAt  DateTime @default(now())
+  updatedAt  temporal.UpdatedAt
+
+  business Business @relation(fields: [businessId], references: [id])
+  sales    Sale[]
+
+  @@index([businessId])
+}
+
+model Sale {
+  id           Uuid       @id @onCreate(uuid())
+  businessId   Uuid
+  customerId   Uuid?
+  status       SaleStatus @default(COMPLETED)
+  currencyCode String
+  subtotal     Decimal(precision: 12, scale: 2)
+  taxAmount    Decimal(precision: 12, scale: 2) @default(0)
+  totalAmount  Decimal(precision: 12, scale: 2)
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  business Business  @relation(fields: [businessId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  items    SaleItem[]
+  invoice  Invoice?
+  payments Payment[]
+
+  @@index([businessId, createdAt])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id          Uuid    @id @onCreate(uuid())
+  saleId      Uuid
+  productId   Uuid
+  productName String
+  quantity    Decimal(precision: 12, scale: 3)
+  unitPrice   Decimal(precision: 12, scale: 2)
+  unitCost    Decimal(precision: 12, scale: 2)
+  lineTotal   Decimal(precision: 12, scale: 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Invoice {
+  id            Uuid          @id @onCreate(uuid())
+  businessId    Uuid
+  saleId        Uuid          @unique
+  invoiceNumber String
+  status        InvoiceStatus @default(ISSUED)
+  currencyCode  String
+  totalAmount   Decimal(precision: 12, scale: 2)
+  issuedAt      DateTime @default(now())
+  dueAt         DateTime?
+  createdAt     DateTime @default(now())
+
+  business Business     @relation(fields: [businessId], references: [id])
+  sale     Sale         @relation(fields: [saleId], references: [id])
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId, issuedAt])
+}
+
+model InvoiceItem {
+  id          Uuid    @id @onCreate(uuid())
+  invoiceId   Uuid
+  description String
+  quantity    Decimal(precision: 12, scale: 3)
+  unitPrice   Decimal(precision: 12, scale: 2)
+  lineTotal   Decimal(precision: 12, scale: 2)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id           Uuid          @id @onCreate(uuid())
+  businessId   Uuid
+  saleId       Uuid
+  invoiceId    Uuid?
+  amount       Decimal(precision: 12, scale: 2)
+  currencyCode String
+  method       PaymentMethod
+  reference    String?
+  paidAt       DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id])
+  sale     Sale     @relation(fields: [saleId], references: [id])
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([businessId, paidAt])
+  @@index([saleId])
+  @@index([invoiceId])
+}
