@@ -11,6 +11,7 @@ import inventoryRoutes from './routes/inventory.routes.js';
 import customerRoutes from './routes/customer.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import invoiceRoutes from './routes/invoice.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 const app = express();
 
@@ -63,6 +64,8 @@ app.use('/api/sales', requireAuth, requireBusiness);
 app.use('/api/sales', salesRoutes);
 app.use('/api/invoices', requireAuth, requireBusiness);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/payments', requireAuth, requireBusiness);
+app.use('/api/payments', paymentRoutes);
 
 app.get('/api/me', requireAuth, async (req, res) => {
   try {
